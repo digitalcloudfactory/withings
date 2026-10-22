@@ -8,6 +8,7 @@ CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 refresh_token = os.environ.get("REFRESH_TOKEN")
 TARGET_URL = os.environ.get("TARGET_API_URL")
 
+
 # 2. Refresh Access Token
 auth_response = requests.post(
     "https://wbsapi.withings.net/v2/oauth2",
@@ -19,6 +20,14 @@ auth_response = requests.post(
         "refresh_token": refresh_token,
     },
 ).json()
+
+# Print the full response to see what Withings is complaining about
+print("Withings Auth Response:", auth_response)
+
+if auth_response.get("status") != 0:
+  raise Exception(
+      f"Withings authentication failed! Error code: {auth_response}"
+  )
 
 access_token = auth_response["body"]["access_token"]
 # Note: You can also grab the rotated new refresh_token here if you want to auto-update it!
