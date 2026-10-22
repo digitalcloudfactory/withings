@@ -55,29 +55,34 @@ if measuregrps:
       "%Y-%m-%d %H:%M:%S"
   )
 
-  weight = None
-  fat_mass = None
+weight = None
+  fat_percentage = None
+  muscle_mass = None
 
   for m in grp.get("measures", []):
     if m["type"] == 1:  # Weight
       weight = m["value"] * (10 ** m["unit"])
-    elif m["type"] == 8:  # Fat Mass
-      fat_mass = m["value"] * (10 ** m["unit"])
+    elif m["type"] == 6:  # Fat Ratio (%)
+      fat_percentage = m["value"] * (10 ** m["unit"])
+    elif m["type"] == 76:  # Muscle Mass (kg)
+      muscle_mass = m["value"] * (10 ** m["unit"])
 
   if weight:
     latest_entry = {
         "date": readable_date,
         "weight_kg": weight,
-        "fat_mass_kg": fat_mass,
+        "fat_percentage": fat_percentage,
+        "muscle_mass_kg": muscle_mass,
     }
 
 # 5. Output Locally in Action Logs
 print("\n" + "=" * 40)
 if latest_entry:
   print("SUCCESS: Latest Measurement Found:\n")
-  print(f"📅 Date: {latest_entry['date']}")
-  print(f"⚖️ Weight:   {latest_entry['weight_kg']} kg")
-  print(f"🧬 Fat Mass: {latest_entry['fat_mass_kg']} kg")
+  print(f"📅 Date:         {latest_entry['date']}")
+  print(f"⚖️ Weight:       {latest_entry['weight_kg']} kg")
+  print(f"🧬 Fat Ratio:    {latest_entry['fat_percentage']} %")
+  print(f"💪 Muscle Mass:  {latest_entry['muscle_mass_kg']} kg")
 else:
   print("No measurements found.")
 print("=" * 40 + "\n")
