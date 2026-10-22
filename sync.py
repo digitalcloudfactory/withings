@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import requests
 
 STATE_FILE = "last_measurement.json"
@@ -9,12 +9,11 @@ STATE_FILE = "last_measurement.json"
 CLIENT_ID = os.environ.get("CLIENT_ID")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 refresh_token = os.environ.get("REFRESH_TOKEN")
-TARGET_URL = os.environ.get("TARGET_API_URL")
 STRIDE_TOKEN = os.environ.get("STRIDE_TOKEN")
 
 STRIDE_API_URL = "https://api.stride.is/v1/athletes/me/metrics"
 
-# 2. Refresh Access Token
+# 2. Refresh Withings Access Token
 auth_response = requests.post(
     "https://wbsapi.withings.net/v2/oauth2",
     data={
@@ -51,8 +50,11 @@ latest_entry = None
 if measuregrps:
   grp = measuregrps[0]
   timestamp = grp.get("date")
-  readable_date = datetime.utcfromtimestamp(timestamp).strftime(
-      "%Y-%m-%d %H:%M:%S"
+
+  # Convert Unix timestamp to ISO 8601 format required by Stride (e.g., 2026-10-22T00:00:00Z)
+  iso_timestamp = (
+      datetime.fromtimestamp(timestamp, timezone.utc)
+      .strftime("%Y-%m-%dT%H:%M:%SZ")
   )
 
   weight = None
@@ -69,8 +71,8 @@ if measuregrps:
 
   if weight:
     latest_entry = {
-        "timestamp": timestamp,
-        "date": readable_date,
+        "timestamp_raw": timestamp,
+        "timestamp": iso_timestamp,
         "weight_kg": weight,
         "fat_percentage": fat_percentage,
         "muscle_mass_kg": muscle_mass,
@@ -95,10 +97,6 @@ if latest_entry:
   print(
       f"  Weight: {latest_entry['weight_kg']} kg | Fat: {latest_entry['fat_percentage']}% | Muscle: {latest_entry['muscle_mass_kg']} kg"
   )
-  print("Last Saved Reading:")
-  print(
-      f"  Weight: {last_weight} kg | Fat: {last_fat}% | Muscle: {last_muscle} kg"
-  )
 
   # Check if any key metric has changed
   values_changed = (
@@ -107,7 +105,7 @@ if latest_entry:
       or latest_entry["muscle_mass_kg"] != last_muscle
   )
 
-if values_changed:
+  if values_changed:
     print("✨ Changes detected! Sending updates to Stride...")
 
     headers = {
