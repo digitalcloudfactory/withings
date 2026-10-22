@@ -29,6 +29,7 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
           TARGET_API_URL: ${{ secrets.TARGET_API_URL }} # Now we use this!
+          STRIDE_TOKEN: ${{ secrets.STRIDE_TOKEN }}
         run: python sync.py
 
       - name: Commit and push if state changed
