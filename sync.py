@@ -46,10 +46,15 @@ meas_response = requests.post(
 
 # 4. Parse & Extract Metrics (Weight & Fat Mass)
 measuregrps = meas_response.get("body", {}).get("measuregrps", [])
-parsed_data = []
+latest_entry = None
 
-for grp in measuregrps:
+if measuregrps:
+  grp = measuregrps[0]  # Grab the first item (newest)
   timestamp = grp.get("date")
+  readable_date = datetime.utcfromtimestamp(timestamp).strftime(
+      "%Y-%m-%d %H:%M:%S"
+  )
+
   weight = None
   fat_mass = None
 
@@ -60,17 +65,19 @@ for grp in measuregrps:
       fat_mass = m["value"] * (10 ** m["unit"])
 
   if weight:
-    parsed_data.append(
-        {"date": timestamp, "weight_kg": weight, "fat_mass_kg": fat_mass}
-    )
+    latest_entry = {
+        "date": readable_date,
+        "weight_kg": weight,
+        "fat_mass_kg": fat_mass,
+    }
 
-
-
-# 5. Output or Save Data Locally
-if parsed_data:
-  print("--- Latest Weight & Fat Mass ---")
-  for entry in parsed_data:
-    print(
-        f"Date: {entry['date']} | Weight: {entry['weight_kg']} kg | Fat Mass:"
-        f" {entry['fat_mass_kg']} kg"
-    )
+# 5. Output Locally in Action Logs
+print("\n" + "=" * 40)
+if latest_entry:
+  print("SUCCESS: Latest Measurement Found:\n")
+  print(f"📅 Date: {latest_entry['date']}")
+  print(f"⚖️ Weight:   {latest_entry['weight_kg']} kg")
+  print(f"🧬 Fat Mass: {latest_entry['fat_mass_kg']} kg")
+else:
+  print("No measurements found.")
+print("=" * 40 + "\n")
