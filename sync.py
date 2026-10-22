@@ -32,15 +32,14 @@ if auth_response.get("status") != 0:
 access_token = auth_response["body"]["access_token"]
 # Note: You can also grab the rotated new refresh_token here if you want to auto-update it!
 
-# 3. Fetch Measurements (Last 7 Days)
-seven_days_ago = int((datetime.utcnow() - timedelta(days=7)).timestamp())
 
+# 3. Fetch ONLY the Latest Measurement (limit=1)
 meas_response = requests.post(
     "https://wbsapi.withings.net/measure",
     data={
         "action": "getmeas",
         "category": "1",
-        "startdate": seven_days_ago,
+        "limit": "1",  # Forces Withings to return only the single latest record
         "access_token": access_token,
     },
 ).json()
@@ -65,10 +64,13 @@ for grp in measuregrps:
         {"date": timestamp, "weight_kg": weight, "fat_mass_kg": fat_mass}
     )
 
-# 5. Send to your External Site / API
+
+
+# 5. Output or Save Data Locally
 if parsed_data:
-  # Send latest or all collected records to your destination site
-  requests.post(TARGET_URL, json=parsed_data[0])
-  print(f"Successfully synced: {parsed_data[0]}")
-else:
-  print("No new measurements found for this week.")
+  print("--- Latest Weight & Fat Mass ---")
+  for entry in parsed_data:
+    print(
+        f"Date: {entry['date']} | Weight: {entry['weight_kg']} kg | Fat Mass:"
+        f" {entry['fat_mass_kg']} kg"
+    )
