@@ -1,0 +1,29 @@
+name: Sync Withings Health Data
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Runs every day at 08:00 UTC
+  workflow_dispatch: # Allows you to trigger it manually from GitHub anytime
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Withings Sync Script
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+          TARGET_API_URL: ${{ secrets.TARGET_API_URL }}
+        run: python sync.py
