@@ -2,7 +2,7 @@ name: Sync Withings Health Data
 
 on:
   schedule:
-    - cron: '0 8 * * *' # Runs daily at 08:00 UTC
+    - cron: '50 4 * * *' # Runs daily at 08:00 UTC
   workflow_dispatch:
 
 permissions:
