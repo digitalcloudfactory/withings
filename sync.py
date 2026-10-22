@@ -10,6 +10,9 @@ CLIENT_ID = os.environ.get("CLIENT_ID")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 refresh_token = os.environ.get("REFRESH_TOKEN")
 TARGET_URL = os.environ.get("TARGET_API_URL")
+STRIDE_TOKEN = os.environ.get("STRIDE_TOKEN")
+
+STRIDE_API_URL = "https://api.stride.is/v1/athletes/me/metrics"
 
 # 2. Refresh Access Token
 auth_response = requests.post(
@@ -104,26 +107,60 @@ if latest_entry:
       or latest_entry["muscle_mass_kg"] != last_muscle
   )
 
-  if values_changed:
-    print("✨ Change detected in values! Triggering update...")
+if values_changed:
+    print("✨ Changes detected! Sending updates to Stride...")
 
-    # Send to target URL if configured
-    if TARGET_URL:
+    headers = {
+        "Authorization": f"Bearer {STRIDE_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    # Define the metrics to push (adjust type names if Stride expects slightly different labels)
+    metrics_to_send = []
+    if latest_entry["weight_kg"] is not None:
+      metrics_to_send.append({
+          "type": "WEIGHT",
+          "value": latest_entry["weight_kg"],
+          "timestamp": latest_entry["timestamp"],
+      })
+    if latest_entry["fat_percentage"] is not None:
+      metrics_to_send.append({
+          "type": "FAT_PERCENTAGE",
+          "value": latest_entry["fat_percentage"],
+          "timestamp": latest_entry["timestamp"],
+      })
+    if latest_entry["muscle_mass_kg"] is not None:
+      metrics_to_send.append({
+          "type": "MUSCLE_MASS",
+          "value": latest_entry["muscle_mass_kg"],
+          "timestamp": latest_entry["timestamp"],
+      })
+
+    # Send each metric in a separate call
+    success = True
+    for payload in metrics_to_send:
       try:
-        response = requests.post(TARGET_URL, json=latest_entry)
-        print(f"Target URL Response Status: {response.status_code}")
+        response = requests.post(
+            STRIDE_API_URL, headers=headers, json=payload
+        )
+        print(
+            f"Sent {payload['type']} ({payload['value']}) -> Status:"
+            f" {response.status_code}"
+        )
+        if response.status_code not in [200, 201]:
+          print(f"Response body: {response.text}")
+          success = False
       except Exception as e:
-        print(f"Failed to send to target URL: {e}")
-    else:
-      print("No TARGET_API_URL set, skipping external push.")
+        print(f"Failed to send {payload['type']}: {e}")
+        success = False
 
-    # Save new state locally so git can commit it
-    with open(STATE_FILE, "w") as f:
-      json.dump(latest_entry, f, indent=4)
-    print("State file updated successfully.")
-
+    # Save new state locally only if pushes succeeded
+    if success:
+      with open(STATE_FILE, "w") as f:
+        json.dump(latest_entry, f, indent=4)
+      print("State file updated successfully.")
   else:
-    print("💤 No changes in weight or body composition. Skipping update.")
+    print("💤 No changes in measurements. Skipping Stride update.")
 else:
   print("No measurements found from Withings API.")
 print("=" * 40 + "\n")
