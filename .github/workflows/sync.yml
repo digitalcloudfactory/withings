@@ -2,8 +2,11 @@ name: Sync Withings Health Data
 
 on:
   schedule:
-    - cron: '0 8 * * *' # Runs every day at 08:00 UTC
-  workflow_dispatch: # Allows you to trigger it manually from GitHub anytime
+    - cron: '0 8 * * *' # Runs daily at 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write # 👈 Crucial: allows the script to commit the state file back to the repo
 
 jobs:
   sync:
@@ -25,5 +28,12 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-          TARGET_API_URL: ${{ secrets.TARGET_API_URL }}
+          TARGET_API_URL: ${{ secrets.TARGET_API_URL }} # Now we use this!
         run: python sync.py
+
+      - name: Commit and push if state changed
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add last_measurement.json
+          git diff --quiet && git diff --cached --quiet || (git commit -m "chore: update last processed measurement" && git push)
