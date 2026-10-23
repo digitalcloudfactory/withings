@@ -36,5 +36,5 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add last_measurement.json
-          git diff --quiet && git diff --cached --quiet || (git commit -m "chore: update last processed measurement" && git push)
+          git add token_state.json last_measurement.json
+          git diff --quiet && git diff --cached --quiet || (git commit -m "chore: update tokens and health state" && git push)
