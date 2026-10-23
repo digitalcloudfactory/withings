@@ -4,16 +4,32 @@ from datetime import datetime, timezone
 import requests
 
 STATE_FILE = "last_measurement.json"
+TOKEN_FILE = "token_state.json"
 
-# 1. Load Secrets from GitHub Environment
+# 1. Load Secrets & Existing Token State
 CLIENT_ID = os.environ.get("CLIENT_ID")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
-refresh_token = os.environ.get("REFRESH_TOKEN")
 STRIDE_TOKEN = os.environ.get("STRIDE_TOKEN")
-
 STRIDE_API_URL = "https://api.stride.is/v1/athletes/me/metrics"
 
-# 2. Refresh Withings Access Token
+# Determine the refresh token: use local saved state if available, else fallback to GitHub Secret
+refresh_token = None
+if os.path.exists(TOKEN_FILE):
+  try:
+    with open(TOKEN_FILE, "r") as f:
+      token_data = json.load(f)
+      refresh_token = token_data.get("refresh_token")
+  except Exception:
+    pass
+
+if not refresh_token:
+  # Fallback to GitHub Secret on the very first run
+  refresh_token = os.environ.get("REFRESH_TOKEN")
+
+if not refresh_token:
+  raise Exception("No valid refresh token found anywhere!")
+
+# 2. Refresh Withings Access Token & New Refresh Token
 auth_response = requests.post(
     "https://wbsapi.withings.net/v2/oauth2",
     data={
@@ -31,6 +47,13 @@ if auth_response.get("status") != 0:
   )
 
 access_token = auth_response["body"]["access_token"]
+new_refresh_token = auth_response["body"][
+    "refresh_token"
+]  # Capture the newly rotated token!
+
+# Save the new refresh token locally immediately so git can commit it
+with open(TOKEN_FILE, "w") as f:
+  json.dump({"refresh_token": new_refresh_token}, f, indent=4)
 
 # 3. Fetch ONLY the Latest Measurement (limit=1)
 meas_response = requests.post(
@@ -50,8 +73,6 @@ latest_entry = None
 if measuregrps:
   grp = measuregrps[0]
   timestamp = grp.get("date")
-
-  # Convert Unix timestamp to ISO 8601 format required by Stride (e.g., 2026-10-22T00:00:00Z)
   iso_timestamp = (
       datetime.fromtimestamp(timestamp, timezone.utc)
       .strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -78,7 +99,7 @@ if measuregrps:
         "muscle_mass_kg": muscle_mass,
     }
 
-# 5. Load Last Saved State
+# 5. Load Last Saved Measurement State
 last_data = {}
 if os.path.exists(STATE_FILE):
   try:
@@ -98,7 +119,6 @@ if latest_entry:
       f"  Weight: {latest_entry['weight_kg']} kg | Fat: {latest_entry['fat_percentage']}% | Muscle: {latest_entry['muscle_mass_kg']} kg"
   )
 
-  # Check if any key metric has changed
   values_changed = (
       latest_entry["weight_kg"] != last_weight
       or latest_entry["fat_percentage"] != last_fat
@@ -113,7 +133,6 @@ if latest_entry:
         "Content-Type": "application/json",
     }
 
-    # Define the metrics to push (adjust type names if Stride expects slightly different labels)
     metrics_to_send = []
     if latest_entry["weight_kg"] is not None:
       metrics_to_send.append({
@@ -134,7 +153,6 @@ if latest_entry:
           "timestamp": latest_entry["timestamp"],
       })
 
-    # Send each metric in a separate call
     success = True
     for payload in metrics_to_send:
       try:
@@ -152,11 +170,10 @@ if latest_entry:
         print(f"Failed to send {payload['type']}: {e}")
         success = False
 
-    # Save new state locally only if pushes succeeded
     if success:
       with open(STATE_FILE, "w") as f:
         json.dump(latest_entry, f, indent=4)
-      print("State file updated successfully.")
+      print("Measurement state file updated successfully.")
   else:
     print("💤 No changes in measurements. Skipping Stride update.")
 else:
