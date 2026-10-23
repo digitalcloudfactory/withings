@@ -2,7 +2,7 @@ name: Sync Withings Health Data
 
 on:
   schedule:
-    - cron: '50 4 * * *' # Runs daily at 04:50 UTC
+   # - cron: '50 4 * * *' # Runs daily at 04:50 UTC
   workflow_dispatch:
   repository_dispatch:
     types: [trigger-external-cron]
