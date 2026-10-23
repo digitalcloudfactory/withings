@@ -1,12 +1,10 @@
 name: Sync Withings Health Data
 
 on:
-  schedule:
-   # - cron: '50 4 * * *' # Runs daily at 04:50 UTC
   workflow_dispatch:
   repository_dispatch:
     types: [trigger-external-cron]
-    
+
 permissions:
   contents: write # 👈 Crucial: allows the script to commit the state file back to the repo
 
@@ -30,7 +28,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-          TARGET_API_URL: ${{ secrets.TARGET_API_URL }} # Now we use this!
+          TARGET_API_URL: ${{ secrets.TARGET_API_URL }}
           STRIDE_TOKEN: ${{ secrets.STRIDE_TOKEN }}
         run: python sync.py
 
