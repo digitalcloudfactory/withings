@@ -2,9 +2,11 @@ name: Sync Withings Health Data
 
 on:
   schedule:
-    - cron: '50 4 * * *' # Runs daily at 08:00 UTC
+    - cron: '50 4 * * *' # Runs daily at 04:50 UTC
   workflow_dispatch:
-
+  repository_dispatch:
+    types: [trigger-external-cron]
+    
 permissions:
   contents: write # 👈 Crucial: allows the script to commit the state file back to the repo
 
