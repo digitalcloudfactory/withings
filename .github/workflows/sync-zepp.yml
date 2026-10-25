@@ -23,8 +23,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run Zepp Sync Scripts
+      - name: Fetch and Summarize Sleep Data
         run: |
-          python sync-zepp.py --config zepp-config.json events --preset daily-health
-          python sync-zepp.py --config zepp-config.json events --preset --type sleep
-          python sync-zepp.py --config zepp-config.json summary
+                python sync-zepp.py --config zepp-config.json manual-data --type sleep --json | python3 -c '
+                import sys, json
+                try:
+                    data = json.load(sys.stdin)
+                    items = data if isinstance(data, list) else data.get("data", [])
+                    if items:
+                        l = items[-1]
+                        print(f"🌙 Sleep Score: {l.get(\"score\", \"N/A\")} | Total: {l.get(\"total_sleep_time\", 0)}m (Deep: {l.get(\"deep_sleep_time\", 0)}m, REM: {l.get(\"rem_sleep_time\", 0)}m)")
+                    else:
+                        print("No sleep items found.")
+                except Exception as e:
+                    print(f"Could not parse sleep output: {e}")
+                '
