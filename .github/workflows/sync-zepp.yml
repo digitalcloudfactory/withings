@@ -44,6 +44,10 @@ jobs:
                       deep = slp.get("dp", 0)
                       light = slp.get("lt", 0)
                       awake = slp.get("wk", 0)
+
+                      # Inside the decoded summary data:
+                      timezone_offset = summary_data.get("tz")
+                      sleep_block_obt = slp.get("obt") # offset from UTC in minutes (e.g., -76 or similar)
                       
                       # Calculate REM sleep (mode 7) from the stage blocks
                       rem = sum((s.get("stop", 0) - s.get("start", 0) + 1) for s in slp.get("stage", []) if s.get("mode") == 7)
@@ -59,6 +63,8 @@ jobs:
                       print("==========================================")
                       print(f"🌙 Zepp Sleep Summary for {dt_str}")
                       print("==========================================")
+                      print(f"Summary tz key: {timezone_offset}")
+                      print(f"Sleep obt offset: {sleep_block_obt}")
                       print(f"⭐ Sleep Score  : {score}/100")
                       print(f"⏰ Sleep Times  : {start_time} - {end_time}")
                       print(f"⌛ Total Sleep  : {total_sleep // 60}h {total_sleep % 60}m ({total_sleep} mins)")
