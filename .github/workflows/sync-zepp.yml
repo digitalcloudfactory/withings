@@ -40,20 +40,17 @@ jobs:
                       summary_data = json.loads(decoded)
                       slp = summary_data.get("slp", {})
                       
-                      # Safely convert tz to an integer
                       tz_seconds = int(summary_data.get("tz", 0) or 0)
                       local_tz = datetime.timezone(datetime.timedelta(seconds=tz_seconds))
                       
                       score = slp.get("ss", "N/A")
                       deep = slp.get("dp", 0)
                       light = slp.get("lt", 0)
+                      rem = slp.get("dt", 0)      # <-- dt is the official Zepp Dream Time (REM)
                       awake = slp.get("wk", 0)
                       
-                      # Calculate REM sleep (mode 7)
-                      rem = sum((s.get("stop", 0) - s.get("start", 0) + 1) for s in slp.get("stage", []) if s.get("mode") == 7)
                       total_sleep = deep + light + rem
                       
-                      # Convert timestamps using local timezone
                       st_ts = slp.get("st")
                       ed_ts = slp.get("ed")
                       start_time = datetime.datetime.fromtimestamp(st_ts, local_tz).strftime("%H:%M") if st_ts else "N/A"
