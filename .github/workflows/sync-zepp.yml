@@ -75,22 +75,23 @@ jobs:
               print(f"Parsing failed: {e}")
           '
           
-          python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd --json | python3 -c '
-          import sys, json
+          python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
+          import sys, json, base64
           try:
-              data = json.load(sys.stdin)
-              items = data if isinstance(data, list) else data.get("data", [])
+              raw = json.load(sys.stdin)
+              items = raw.get("data", []) if isinstance(raw, dict) else raw
               if items:
-                  print("==========================================")
-                  print("💓 Zepp HRV / RMSSD Summary")
-                  print("==========================================")
-                  for item in items[-3:]:
-                      date_val = item.get("date") or item.get("date_time", "N/A")
-                      hrv_val = item.get("hrv") or item.get("rmssd") or item.get("value", "N/A")
-                      print(f"📅 Date: {date_val} | HRV/RMSSD: {hrv_val} ms")
-                  print("==========================================")
+                  latest = items[-1]
+                  summary_str = latest.get("summary")
+                  if summary_str:
+                      decoded = base64.b64decode(summary_str).decode("utf-8")
+                      summary_data = json.loads(decoded)
+                      print("=== FULL HR / HRV BLOCK ===")
+                      print(json.dumps(summary_data.get("hr", {}), indent=2))
+                  else:
+                      print("No summary string found.")
               else:
-                  print("No HRV event records found.")
+                  print("No band data records found.")
           except Exception as e:
-              print(f"HRV parsing failed: {e}")
+              print(f"Error: {e}")
           '
