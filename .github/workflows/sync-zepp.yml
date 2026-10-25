@@ -23,29 +23,20 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Fetch and Summarize Sleep Data
+      - name: Debug Band Data Structure
         run: |
           python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
           import sys, json
           try:
               data = json.load(sys.stdin)
-              items = data if isinstance(data, list) else data.get("data", [])
-              if items:
-                  # Print available types for debugging if sleep is missing
-                  types_found = [i.get("type") for i in items]
-                  sleep_items = [i for i in items if i.get("type") in ["sleep", 16, "16"]]
-                  
-                  if sleep_items:
-                      l = sleep_items[-1]
-                      score = l.get("score", "N/A")
-                      total = l.get("total_sleep_time", 0)
-                      deep = l.get("deep_sleep_time", 0)
-                      rem = l.get("rem_sleep_time", 0)
-                      print(f"🌙 Sleep Score: {score} | Total: {total}m (Deep: {deep}m, REM: {rem}m)")
-                  else:
-                      print(f"Band data found types: {types_found}, but no sleep records matched.")
-              else:
-                  print("No band data found. Ensure your watch has synced recently.")
+              print("Top-level type:", type(data).__name__)
+              if isinstance(data, dict):
+                  print("Top keys:", list(data.keys()))
+                  data = data.get("data", data.get("items", [data]))
+              
+              if isinstance(data, list) and data:
+                  print(f"Sample item keys: {list(data[0].keys())}")
+                  print("Sample item snippet:", json.dumps(data[0])[:300])
           except Exception as e:
-              print(f"Could not parse sleep output: {e}")
+              print(f"Debug failed: {e}")
           '
