@@ -75,23 +75,16 @@ jobs:
               print(f"Parsing failed: {e}")
           '
           
-          python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
-          import sys, json, base64
+          python sync-zepp.py --config zepp-config.json summary --json | python3 -c '
+          import sys, json
           try:
-              raw = json.load(sys.stdin)
-              items = raw.get("data", []) if isinstance(raw, dict) else raw
-              if items:
-                  latest = items[-1]
-                  summary_str = latest.get("summary")
-                  if summary_str:
-                      decoded = base64.b64decode(summary_str).decode("utf-8")
-                      summary_data = json.loads(decoded)
-                      print("=== FULL HR / HRV BLOCK ===")
-                      print(json.dumps(summary_data.get("hr", {}), indent=2))
-                  else:
-                      print("No summary string found.")
-              else:
-                  print("No band data records found.")
+              data = json.load(sys.stdin)
+              print("=== SUMMARY KEYS ===")
+              print(list(data.keys()) if isinstance(data, dict) else type(data))
+              # Print specific potential matches if they exist
+              for key in ["hrv", "recovery", "readiness", "score", "training_load"]:
+                  if key in data:
+                      print(f"{key}:", data[key])
           except Exception as e:
-              print(f"Error: {e}")
+              print(f"Summary check failed: {e}")
           '
