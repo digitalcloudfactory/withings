@@ -75,35 +75,22 @@ jobs:
               print(f"Parsing failed: {e}")
           '
           
-          python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
-          import sys, json, base64
+          python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd --json | python3 -c '
+          import sys, json
           try:
-              raw = json.load(sys.stdin)
-              items = raw.get("data", []) if isinstance(raw, dict) else raw
+              data = json.load(sys.stdin)
+              items = data if isinstance(data, list) else data.get("data", [])
               if items:
-                  latest = items[-1]
-                  dt_str = latest.get("date_time")
-                  
-                  summary_str = latest.get("summary")
-                  if summary_str:
-                      decoded = base64.b64decode(summary_str).decode("utf-8")
-                      summary_data = json.loads(decoded)
-                      
-                      # Zepp often stores heart rate / HRV metrics inside the "hr" or separate fields
-                      hr_info = summary_data.get("hr", {})
-                      # Let us also look at data_hr if present on the root item
-                      data_hr = latest.get("data_hr", [])
-                      
-                      print("==========================================")
-                      print(f"💓 Zepp HRV / Heart Summary for {dt_str}")
-                      print("==========================================")
-                      print(f"HR Summary Info : {hr_info}")
-                      print(f"Data HR entries : {len(data_hr)} points found")
-                      print("==========================================")
-                  else:
-                      print("No summary block found for HRV.")
+                  print("==========================================")
+                  print("💓 Zepp HRV / RMSSD Summary")
+                  print("==========================================")
+                  for item in items[-3:]:
+                      date_val = item.get("date") or item.get("date_time", "N/A")
+                      hrv_val = item.get("hrv") or item.get("rmssd") or item.get("value", "N/A")
+                      print(f"📅 Date: {date_val} | HRV/RMSSD: {hrv_val} ms")
+                  print("==========================================")
               else:
-                  print("No band data records found.")
+                  print("No HRV event records found.")
           except Exception as e:
               print(f"HRV parsing failed: {e}")
           '
