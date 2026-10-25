@@ -40,8 +40,8 @@ jobs:
                       summary_data = json.loads(decoded)
                       slp = summary_data.get("slp", {})
                       
-                      # Get timezone offset in seconds (e.g., 7200 = 2 hours)
-                      tz_seconds = summary_data.get("tz", 0)
+                      # Safely convert tz to an integer
+                      tz_seconds = int(summary_data.get("tz", 0) or 0)
                       local_tz = datetime.timezone(datetime.timedelta(seconds=tz_seconds))
                       
                       score = slp.get("ss", "N/A")
