@@ -1,9 +1,5 @@
 {
-  "app_token": "PASTE_APPTOKEN_FROM_CHARLES_CAPTURE_HERE",
-  "user_id": "1234567890",
-  "host": "api-mifit-us3.zepp.com",
-  "app_platform": "ios_phone",
-  "lang": "en",
-  "country": "US",
-  "timezone": "UTC"
+  "app_token": "DQVBQDZOQmJaR0YyajYmWnJoBAgAAAAAAYT1EU1paTzdQWDRGY3pwS1pjUHBac3hyQUFBQWFGZlNtQnQmcj0xMCZ0PWh1YW1pJnRpPXRvbS52YW5kZW5ib3NjaEB0ZWxlbmV0LmJlJmg9MTc5MjkyMTc2ODUyNCZpPTg2NDAwMCZ1c2VybmFtZT10b20udmFuZGVuYm9zY2gQFPNeCtGRiitsKJj0GA14",
+  "user_id": "7086238783",
+  "host": "api-mifit.huami.com",
 }
