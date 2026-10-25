@@ -23,29 +23,54 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Extract and Inspect Sleep Data
+      - name: Fetch and Summarize Sleep Data
         run: |
           python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
-          import sys, json, base64
+          import sys, json, base64, datetime
           try:
               raw = json.load(sys.stdin)
               items = raw.get("data", []) if isinstance(raw, dict) else raw
               if items:
-                  # Grab the latest record
                   latest = items[-1]
-                  dt = latest.get("date_time")
-                  print(f"Latest record date: {dt}")
+                  dt_str = latest.get("date_time")
                   
                   summary_str = latest.get("summary")
                   if summary_str:
                       decoded = base64.b64decode(summary_str).decode("utf-8")
                       summary_data = json.loads(decoded)
-                      slp = summary_data.get("slp")
+                      slp = summary_data.get("slp", {})
                       
-                      print("=== SLEEP OBJECT (slp) ===")
-                      print(json.dumps(slp, indent=2))
+                      score = slp.get("ss", "N/A")
+                      deep = slp.get("dp", 0)
+                      light = slp.get("lt", 0)
+                      awake = slp.get("wk", 0)
+                      
+                      # Calculate REM sleep (mode 7) from the stage blocks
+                      rem = sum((s.get("stop", 0) - s.get("start", 0) + 1) for s in slp.get("stage", []) if s.get("mode") == 7)
+                      
+                      total_sleep = deep + light + rem
+                      
+                      # Format timestamps
+                      st_ts = slp.get("st")
+                      ed_ts = slp.get("ed")
+                      start_time = datetime.datetime.fromtimestamp(st_ts).strftime("%H:%M") if st_ts else "N/A"
+                      end_time = datetime.datetime.fromtimestamp(ed_ts).strftime("%H:%M") if ed_ts else "N/A"
+                      
+                      print("==========================================")
+                      print(f"🌙 Zepp Sleep Summary for {dt_str}")
+                      print("==========================================")
+                      print(f"⭐ Sleep Score  : {score}/100")
+                      print(f"⏰ Sleep Times  : {start_time} - {end_time}")
+                      print(f"⌛ Total Sleep  : {total_sleep // 60}h {total_sleep % 60}m ({total_sleep} mins)")
+                      print(f"  ├─ Deep Sleep : {deep} mins")
+                      print(f"  ├─ REM Sleep  : {rem} mins")
+                      print(f"  ├─ Light Sleep: {light} mins")
+                      print(f"  └─ Awake Time : {awake} mins")
+                      print("==========================================")
+                  else:
+                      print("No sleep summary block found in the latest record.")
               else:
                   print("No band data records found.")
           except Exception as e:
-              print(f"Extraction failed: {e}")
+              print(f"Parsing failed: {e}")
           '
