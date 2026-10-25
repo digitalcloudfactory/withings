@@ -30,4 +30,4 @@ jobs:
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
           TARGET_API_URL: ${{ secrets.TARGET_API_URL }}
           STRIDE_TOKEN: ${{ secrets.STRIDE_TOKEN }}
-        run: python sync-zepp.py events --preset hrv
+        run: python sync-zepp.py --config zepp-config.json events --preset hrv
