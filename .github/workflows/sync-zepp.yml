@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Debug Band Data Structure
+      - name: Extract and Inspect Sleep Data
         run: |
           python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
           import sys, json, base64
@@ -31,22 +31,21 @@ jobs:
               raw = json.load(sys.stdin)
               items = raw.get("data", []) if isinstance(raw, dict) else raw
               if items:
-                  print(f"Found {len(items)} band-data records.")
-                  for item in items:
-                      dt = item.get("date_time")
-                      dtype = item.get("data_type")
-                      print(f"Record date: {dt} | data_type: {dtype}")
+                  # Grab the latest record
+                  latest = items[-1]
+                  dt = latest.get("date_time")
+                  print(f"Latest record date: {dt}")
+                  
+                  summary_str = latest.get("summary")
+                  if summary_str:
+                      decoded = base64.b64decode(summary_str).decode("utf-8")
+                      summary_data = json.loads(decoded)
+                      slp = summary_data.get("slp")
                       
-                      summary_str = item.get("summary")
-                      if summary_str and isinstance(summary_str, str):
-                          try:
-                              decoded = base64.b64decode(summary_str).decode("utf-8")
-                              summary_data = json.loads(decoded)
-                              print("  Decoded summary keys:", list(summary_data.keys()))
-                          except Exception:
-                              pass
+                      print("=== SLEEP OBJECT (slp) ===")
+                      print(json.dumps(slp, indent=2))
               else:
                   print("No band data records found.")
           except Exception as e:
-              print(f"Parsing failed: {e}")
+              print(f"Extraction failed: {e}")
           '
