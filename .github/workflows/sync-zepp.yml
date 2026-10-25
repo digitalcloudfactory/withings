@@ -40,33 +40,30 @@ jobs:
                       summary_data = json.loads(decoded)
                       slp = summary_data.get("slp", {})
                       
+                      # Get timezone offset in seconds (e.g., 7200 = 2 hours)
+                      tz_seconds = summary_data.get("tz", 0)
+                      local_tz = datetime.timezone(datetime.timedelta(seconds=tz_seconds))
+                      
                       score = slp.get("ss", "N/A")
                       deep = slp.get("dp", 0)
                       light = slp.get("lt", 0)
                       awake = slp.get("wk", 0)
-
-                      # Inside the decoded summary data:
-                      timezone_offset = summary_data.get("tz")
-                      sleep_block_obt = slp.get("obt") # offset from UTC in minutes (e.g., -76 or similar)
                       
-                      # Calculate REM sleep (mode 7) from the stage blocks
+                      # Calculate REM sleep (mode 7)
                       rem = sum((s.get("stop", 0) - s.get("start", 0) + 1) for s in slp.get("stage", []) if s.get("mode") == 7)
-                      
                       total_sleep = deep + light + rem
                       
-                      # Format timestamps
+                      # Convert timestamps using local timezone
                       st_ts = slp.get("st")
                       ed_ts = slp.get("ed")
-                      start_time = datetime.datetime.fromtimestamp(st_ts).strftime("%H:%M") if st_ts else "N/A"
-                      end_time = datetime.datetime.fromtimestamp(ed_ts).strftime("%H:%M") if ed_ts else "N/A"
+                      start_time = datetime.datetime.fromtimestamp(st_ts, local_tz).strftime("%H:%M") if st_ts else "N/A"
+                      end_time = datetime.datetime.fromtimestamp(ed_ts, local_tz).strftime("%H:%M") if ed_ts else "N/A"
                       
                       print("==========================================")
                       print(f"🌙 Zepp Sleep Summary for {dt_str}")
                       print("==========================================")
-                      print(f"Summary tz key: {timezone_offset}")
-                      print(f"Sleep obt offset: {sleep_block_obt}")
                       print(f"⭐ Sleep Score  : {score}/100")
-                      print(f"⏰ Sleep Times  : {start_time} - {end_time}")
+                      print(f"⏰ Sleep Times  : {start_time} - {end_time} (UTC+{tz_seconds // 3600})")
                       print(f"⌛ Total Sleep  : {total_sleep // 60}h {total_sleep % 60}m ({total_sleep} mins)")
                       print(f"  ├─ Deep Sleep : {deep} mins")
                       print(f"  ├─ REM Sleep  : {rem} mins")
@@ -74,7 +71,7 @@ jobs:
                       print(f"  └─ Awake Time : {awake} mins")
                       print("==========================================")
                   else:
-                      print("No sleep summary block found in the latest record.")
+                      print("No sleep summary block found.")
               else:
                   print("No band data records found.")
           except Exception as e:
