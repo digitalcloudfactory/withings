@@ -1,0 +1,33 @@
+name: Sync Zepp Health Data
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [trigger-external-cron]
+
+permissions:
+  contents: write # 👈 Crucial: allows the script to commit the state file back to the repo
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Zepp Sync Script
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+          TARGET_API_URL: ${{ secrets.TARGET_API_URL }}
+          STRIDE_TOKEN: ${{ secrets.STRIDE_TOKEN }}
+        run: python sync-zepp.py
