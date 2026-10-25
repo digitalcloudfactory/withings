@@ -1,4 +1,4 @@
-name: Sync Zepp Health Data
+name: Zepp Sync Workflow # (Added a top-level name for clarity)
 
 on:
   workflow_dispatch:
@@ -23,6 +23,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run Zepp Sync Script
-        run: python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd
-        run: python sync-zepp.py --config zepp-config.json manual-data --type sleep
+      - name: Run Zepp Sync Scripts
+        run: |
+          python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd
+          python sync-zepp.py --config zepp-config.json manual-data --type sleep
