@@ -31,8 +31,10 @@ jobs:
               data = json.load(sys.stdin)
               items = data if isinstance(data, list) else data.get("data", [])
               if items:
-                  # Look for sleep-related records in band data
-                  sleep_items = [i for i in items if i.get("type") == "sleep" or i.get("type") == 16]
+                  # Print available types for debugging if sleep is missing
+                  types_found = [i.get("type") for i in items]
+                  sleep_items = [i for i in items if i.get("type") in ["sleep", 16, "16"]]
+                  
                   if sleep_items:
                       l = sleep_items[-1]
                       score = l.get("score", "N/A")
@@ -41,10 +43,9 @@ jobs:
                       rem = l.get("rem_sleep_time", 0)
                       print(f"🌙 Sleep Score: {score} | Total: {total}m (Deep: {deep}m, REM: {rem}m)")
                   else:
-                      print(f"Band data found ({len(items)} items), but no sleep records matched.")
+                      print(f"Band data found types: {types_found}, but no sleep records matched.")
               else:
                   print("No band data found. Ensure your watch has synced recently.")
           except Exception as e:
               print(f"Could not parse sleep output: {e}")
-          '
           '
