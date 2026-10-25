@@ -24,4 +24,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Zepp Sync Scripts
-        run: python sync-zepp.py --config zepp-config.json band-data --days 1
+        run: |
+          python sync-zepp.py --config zepp-config.json events --preset daily-health
+          python sync-zepp.py --config zepp-config.json events --preset --type sleep
+          python sync-zepp.py --config zepp-config.json summary
