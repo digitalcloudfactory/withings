@@ -74,3 +74,36 @@ jobs:
           except Exception as e:
               print(f"Parsing failed: {e}")
           '
+          
+          python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
+          import sys, json, base64
+          try:
+              raw = json.load(sys.stdin)
+              items = raw.get("data", []) if isinstance(raw, dict) else raw
+              if items:
+                  latest = items[-1]
+                  dt_str = latest.get("date_time")
+                  
+                  summary_str = latest.get("summary")
+                  if summary_str:
+                      decoded = base64.b64decode(summary_str).decode("utf-8")
+                      summary_data = json.loads(decoded)
+                      
+                      # Zepp often stores heart rate / HRV metrics inside the "hr" or separate fields
+                      hr_info = summary_data.get("hr", {})
+                      # Let us also look at data_hr if present on the root item
+                      data_hr = latest.get("data_hr", [])
+                      
+                      print("==========================================")
+                      print(f"💓 Zepp HRV / Heart Summary for {dt_str}")
+                      print("==========================================")
+                      print(f"HR Summary Info : {hr_info}")
+                      print(f"Data HR entries : {len(data_hr)} points found")
+                      print("==========================================")
+                  else:
+                      print("No summary block found for HRV.")
+              else:
+                  print("No band data records found.")
+          except Exception as e:
+              print(f"HRV parsing failed: {e}")
+          '
