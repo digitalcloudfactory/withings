@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Fetch and Summarize Sleep Data
+      - name: Debug Band Data Structure
         run: |
           python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
           import sys, json, base64
@@ -33,12 +33,13 @@ jobs:
               if items:
                   print(f"Found {len(items)} band-data records.")
                   for item in items:
-                      print(f"Record date: {item.get(\"date_time\")} | data_type: {item.get(\"data_type\")}")
-                      # If summary is base64 encoded JSON string, try decoding it
+                      dt = item.get("date_time")
+                      dtype = item.get("data_type")
+                      print(f"Record date: {dt} | data_type: {dtype}")
+                      
                       summary_str = item.get("summary")
                       if summary_str and isinstance(summary_str, str):
                           try:
-                              # Attempt base64 decode if applicable
                               decoded = base64.b64decode(summary_str).decode("utf-8")
                               summary_data = json.loads(decoded)
                               print("  Decoded summary keys:", list(summary_data.keys()))
