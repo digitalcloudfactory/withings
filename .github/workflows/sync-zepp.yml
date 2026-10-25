@@ -24,10 +24,5 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Zepp Sync Script
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-          TARGET_API_URL: ${{ secrets.TARGET_API_URL }}
-          STRIDE_TOKEN: ${{ secrets.STRIDE_TOKEN }}
-        run: python sync-zepp.py --config zepp-config.json events --preset hrv
+        run: python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd
+        run: python sync-zepp.py --config zepp-config.json manual-data --type sleep
