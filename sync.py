@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import requests
 
 STATE_FILE = "last_measurement.json"
@@ -12,7 +12,6 @@ CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 STRIDE_TOKEN = os.environ.get("STRIDE_TOKEN")
 STRIDE_API_URL = "https://api.stride.is/v1/athletes/me/metrics"
 
-# Determine the refresh token: use local saved state if available, else fallback to GitHub Secret
 refresh_token = None
 if os.path.exists(TOKEN_FILE):
   try:
@@ -23,7 +22,6 @@ if os.path.exists(TOKEN_FILE):
     pass
 
 if not refresh_token:
-  # Fallback to GitHub Secret on the very first run
   refresh_token = os.environ.get("REFRESH_TOKEN")
 
 if not refresh_token:
@@ -47,31 +45,33 @@ if auth_response.get("status") != 0:
   )
 
 access_token = auth_response["body"]["access_token"]
-new_refresh_token = auth_response["body"][
-    "refresh_token"
-]  # Capture the newly rotated token!
+new_refresh_token = auth_response["body"]["refresh_token"]
 
-# Save the new refresh token locally immediately so git can commit it
 with open(TOKEN_FILE, "w") as f:
   json.dump({"refresh_token": new_refresh_token}, f, indent=4)
 
-# 3. Fetch ONLY the Latest Measurement (limit=1)
+# 3. Fetch Measurements from the Last 2 Days (Ensures we catch today's weigh-in)
+two_days_ago = int((datetime.now(timezone.utc) - timedelta(days=2)).timestamp())
+
 meas_response = requests.post(
     "https://wbsapi.withings.net/measure",
     data={
         "action": "getmeas",
         "category": "1",
-        "limit": "1",
+        "startdate": two_days_ago,  # Uses a time window instead of limit=1
         "access_token": access_token,
     },
 ).json()
 
-# 4. Parse & Extract Latest Metrics
+# 4. Parse & Find the Absolute Latest Measurement Group via Python
 measuregrps = meas_response.get("body", {}).get("measuregrps", [])
 latest_entry = None
 
 if measuregrps:
+  # Sort groups by timestamp descending (newest first) to guarantee we get the latest
+  measuregrps.sort(key=lambda x: x.get("date", 0), reverse=True)
   grp = measuregrps[0]
+
   timestamp = grp.get("date")
   iso_timestamp = (
       datetime.fromtimestamp(timestamp, timezone.utc)
@@ -99,7 +99,7 @@ if measuregrps:
         "muscle_mass_kg": muscle_mass,
     }
 
-# 5. Load Last Saved Measurement State
+# 5. Load Last Saved Measurement State & Compare
 last_data = {}
 if os.path.exists(STATE_FILE):
   try:
@@ -114,10 +114,11 @@ last_muscle = last_data.get("muscle_mass_kg")
 
 print("\n" + "=" * 40)
 if latest_entry:
-  print("Current Reading:")
+  print("Current Reading Found:")
   print(
       f"  Weight: {latest_entry['weight_kg']} kg | Fat: {latest_entry['fat_percentage']}% | Muscle: {latest_entry['muscle_mass_kg']} kg"
   )
+  print(f"  Timestamp: {latest_entry['timestamp']}")
 
   values_changed = (
       latest_entry["weight_kg"] != last_weight
@@ -142,7 +143,7 @@ if latest_entry:
       })
     if latest_entry["fat_percentage"] is not None:
       metrics_to_send.append({
-          "type": "BODY_FAT",
+          "type": "FAT_PERCENTAGE",
           "value": latest_entry["fat_percentage"],
           "timestamp": latest_entry["timestamp"],
       })
@@ -175,7 +176,7 @@ if latest_entry:
         json.dump(latest_entry, f, indent=4)
       print("Measurement state file updated successfully.")
   else:
-    print("💤 No changes in measurements. Skipping Stride update.")
+    print("💤 No changes in measurements compared to last saved state.")
 else:
-  print("No measurements found from Withings API.")
+  print("No measurements found from Withings API within the time window.")
 print("=" * 40 + "\n")
