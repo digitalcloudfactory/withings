@@ -50,7 +50,7 @@ new_refresh_token = auth_response["body"]["refresh_token"]
 with open(TOKEN_FILE, "w") as f:
   json.dump({"refresh_token": new_refresh_token}, f, indent=4)
 
-# 3. Fetch Measurements from the Last 7 Days (Widened to 7 days for testing)
+# 3. Fetch Measurements from the Last 7 Days
 seven_days_ago = int((datetime.now(timezone.utc) - timedelta(days=7)).timestamp())
 
 meas_response = requests.post(
@@ -63,43 +63,43 @@ meas_response = requests.post(
     },
 ).json()
 
-# 🔍 DEBUG: Print the raw response from Withings so we can see what's inside
-print("Raw Withings Response:", json.dumps(meas_response, indent=2))
-
-# 4. Parse & Find the Absolute Latest Measurement Group via Python
+# 4. Parse & Find the Latest Measurement Group that Contains Weight
 measuregrps = meas_response.get("body", {}).get("measuregrps", [])
 latest_entry = None
 
 if measuregrps:
+  # Sort groups by timestamp descending (newest first)
   measuregrps.sort(key=lambda x: x.get("date", 0), reverse=True)
-  grp = measuregrps[0]
 
-  timestamp = grp.get("date")
-  iso_timestamp = (
-      datetime.fromtimestamp(timestamp, timezone.utc)
-      .strftime("%Y-%m-%dT%H:%M:%SZ")
-  )
+  # Find the first group that contains a weight measurement (type 1)
+  for grp in measuregrps:
+    timestamp = grp.get("date")
+    weight = None
+    fat_percentage = None
+    muscle_mass = None
 
-  weight = None
-  fat_percentage = None
-  muscle_mass = None
+    for m in grp.get("measures", []):
+      if m["type"] == 1:
+        weight = round(m["value"] * (10 ** m["unit"]), 2)
+      elif m["type"] == 6:
+        fat_percentage = round(m["value"] * (10 ** m["unit"]), 1)
+      elif m["type"] == 76:
+        muscle_mass = round(m["value"] * (10 ** m["unit"]), 2)
 
-  for m in grp.get("measures", []):
-    if m["type"] == 1:
-      weight = round(m["value"] * (10 ** m["unit"]), 2)
-    elif m["type"] == 6:
-      fat_percentage = round(m["value"] * (10 ** m["unit"]), 1)
-    elif m["type"] == 76:
-      muscle_mass = round(m["value"] * (10 ** m["unit"]), 2)
-
-  if weight:
-    latest_entry = {
-        "timestamp_raw": timestamp,
-        "timestamp": iso_timestamp,
-        "weight_kg": weight,
-        "fat_percentage": fat_percentage,
-        "muscle_mass_kg": muscle_mass,
-    }
+    # If we found a group with weight, lock it in and stop searching
+    if weight is not None:
+      iso_timestamp = (
+          datetime.fromtimestamp(timestamp, timezone.utc)
+          .strftime("%Y-%m-%dT%H:%M:%SZ")
+      )
+      latest_entry = {
+          "timestamp_raw": timestamp,
+          "timestamp": iso_timestamp,
+          "weight_kg": weight,
+          "fat_percentage": fat_percentage,
+          "muscle_mass_kg": muscle_mass,
+      }
+      break
 
 # 5. Load Last Saved Measurement State & Compare
 last_data = {}
@@ -118,7 +118,9 @@ print("\n" + "=" * 40)
 if latest_entry:
   print("Current Reading Found:")
   print(
-      f"  Weight: {latest_entry['weight_kg']} kg | Fat: {latest_entry['fat_percentage']}% | Muscle: {latest_entry['muscle_mass_kg']} kg"
+      f"  Weight: {latest_entry['weight_kg']} kg | Fat:"
+      f" {latest_entry['fat_percentage']}% | Muscle:"
+      f" {latest_entry['muscle_mass_kg']} kg"
   )
   print(f"  Timestamp: {latest_entry['timestamp']}")
 
@@ -180,5 +182,5 @@ if latest_entry:
   else:
     print("💤 No changes in measurements compared to last saved state.")
 else:
-  print("No measurements found from Withings API within the time window.")
+  print("No valid weight measurements found from Withings API.")
 print("=" * 40 + "\n")
