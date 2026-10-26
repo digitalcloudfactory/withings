@@ -75,13 +75,23 @@ jobs:
               print(f"Parsing failed: {e}")
           '
           
-          python sync-zepp.py --config zepp-config.json summary --json | python3 -c '
-          import sys, json
+          python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
+          import sys, json, base64
           try:
-              data = json.load(sys.stdin)
-              hr_7_days = data.get("heart_rate_last_7_days", {})
-              print("=== HEART RATE LAST 7 DAYS ===")
-              print(json.dumps(hr_7_days, indent=2))
+              raw = json.load(sys.stdin)
+              items = raw.get("data", []) if isinstance(raw, dict) else raw
+              if items:
+                  latest = items[-1]
+                  summary_str = latest.get("summary")
+                  if summary_str:
+                      decoded = base64.b64decode(summary_str).decode("utf-8")
+                      summary_data = json.loads(decoded)
+                      print("=== DECODED SUMMARY ROOT KEYS & VALUES ===")
+                      for k, v in summary_data.items():
+                          print(f"{k}: {v if not isinstance(v, (dict, list)) else type(v)}")
+                          
+                      print("\n=== SLP RHR FIELD ===")
+                      print("rhr (Resting HR):", summary_data.get("slp", {}).get("rhr"))
           except Exception as e:
-              print(f"Inspection failed: {e}")
+              print(f"Error: {e}")
           '
