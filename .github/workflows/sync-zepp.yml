@@ -36,18 +36,26 @@ jobs:
 
           # 4. Generate Report and POST to Stride API
           python3 -c '
-          import json, base64, datetime, urllib.request
+          import json, base64, datetime, urllib.request, urllib.error
 
           STRIDE_TOKEN = "stride_pat_vRgxR3OuyXCsIqIjdO9PgmHILhHyOYLDiP12dqZfqgg"
           STRIDE_URL = "https://api.stride.is/v1/athletes/me/metrics"
+          
+          # Standard RFC 3339 UTC Timestamp
+          now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
           def post_to_stride(metric_type, value):
               if value is None or value == "N/A":
                   return
+              
+              # Cast whole-number scores/rates to int, keep HRV float if needed
+              val = float(value) if metric_type == "HRV" else int(value)
+
               payload = {
                   "type": metric_type,
-                  "value": float(value),
-                  "source": "ZEPP"
+                  "value": val,
+                  "timestamp": now_iso,
+                  "source": "MANUAL"
               }
               data = json.dumps(payload).encode("utf-8")
               req = urllib.request.Request(
@@ -61,7 +69,10 @@ jobs:
               )
               try:
                   with urllib.request.urlopen(req) as resp:
-                      print(f"  [Stride API] Successfully posted {metric_type} = {value} (HTTP {resp.status})")
+                      print(f"  [Stride API] Successfully posted {metric_type} = {val} (HTTP {resp.status})")
+              except urllib.error.HTTPError as err:
+                  error_body = err.read().decode("utf-8", errors="ignore")
+                  print(f"  [Stride API] Failed to post {metric_type} (HTTP {err.code}): {error_body}")
               except Exception as err:
                   print(f"  [Stride API] Failed to post {metric_type}: {err}")
 
@@ -70,7 +81,7 @@ jobs:
           print("==========================================")
 
           # --- SLEEP & BASELINE ---
-          score, rhr, sleep_duration_min = "N/A", "N/A", 0
+          score, rhr = "N/A", "N/A"
           try:
               with open("band_data.json") as f:
                   raw_band = json.load(f)
