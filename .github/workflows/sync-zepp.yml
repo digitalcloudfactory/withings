@@ -111,3 +111,19 @@ jobs:
           except Exception as e:
               print(f"HRV parsing failed: {e}")
           '
+
+          python sync-zepp.py --config zepp-config.json events --preset readiness --days 2 --json | python3 -c '
+          import sys, json
+          try:
+              data = json.load(sys.stdin)
+              items = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+              if items:
+                  print("=== READINESS ITEM KEYS ===")
+                  print(list(items[0].keys()))
+                  print("\n=== SAMPLE READINESS ITEM ===")
+                  print(json.dumps(items[0], indent=2))
+              else:
+                  print("No readiness event records found.")
+          except Exception as e:
+              print(f"Readiness check failed: {e}")
+          '
