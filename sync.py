@@ -147,7 +147,7 @@ if latest_entry:
       })
     if latest_entry["fat_percentage"] is not None:
       metrics_to_send.append({
-          "type": "FAT_PERCENTAGE",
+          "type": "BODY_FAT",
           "value": latest_entry["fat_percentage"],
           "timestamp": latest_entry["timestamp"],
       })
