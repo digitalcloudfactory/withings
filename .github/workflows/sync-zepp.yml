@@ -51,11 +51,11 @@ jobs:
               # Cast whole-number scores/rates to int, keep HRV float if needed
               val = float(value) if metric_type == "HRV" else int(value)
 
+              # Note: "source" removed as the Stride API rejects it on write requests
               payload = {
                   "type": metric_type,
                   "value": val,
-                  "timestamp": now_iso,
-                  "source": "MANUAL"
+                  "timestamp": now_iso
               }
               data = json.dumps(payload).encode("utf-8")
               req = urllib.request.Request(
