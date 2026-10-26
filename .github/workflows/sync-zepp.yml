@@ -79,9 +79,9 @@ jobs:
               items = raw_rdns.get("items", []) if isinstance(raw_rdns, dict) else []
               if items:
                   val = items[0].get("value", {})
-                  print(f"⚡ Readiness Score: {val.get(\"rdnsScore\", \"N/A\")}/100")
-                  print(f"💓 Sleep HRV      : {val.get(\"sleepHRV\", \"N/A\")} ms")
-                  print(f"❤️  Sleep RHR      : {val.get(\"sleepRHR\", \"N/A\")} bpm")
+                  print(f"⚡ Readiness Score: {val.get('rdnsScore', 'N/A')}/100")
+                  print(f"💓 Sleep HRV      : {val.get('sleepHRV', 'N/A')} ms")
+                  print(f"❤️  Sleep RHR      : {val.get('sleepRHR', 'N/A')} bpm")
           except Exception as e:
               print(f"Readiness parsing error: {e}")
 
