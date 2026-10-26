@@ -75,8 +75,39 @@ jobs:
               print(f"Parsing failed: {e}")
           '
           
-          echo "=== TESTING --preset hrv ==="
-          python sync-zepp.py --config zepp-config.json events --preset hrv --days 7 --json
-          
-          echo -e "\n=== TESTING --preset hrv-rmssd ==="
-          python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd --days 7 --json
+          python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd --days 2 --json | python3 -c '
+          import sys, json
+          try:
+              data = json.load(sys.stdin)
+              items = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+              if items:
+                  # Get the most recent record item
+                  latest = items[0]
+                  samples = latest.get("value", {}).get("samples", [])
+                  
+                  if samples:
+                      # Extract all hrv values from the sample points
+                      hrv_values = [s.get("hrv") for s in samples if "hrv" in s]
+                      
+                      if hrv_values:
+                          avg_hrv = sum(hrv_values) / len(hrv_values)
+                          max_hrv = max(hrv_values)
+                          min_hrv = min(hrv_values)
+                          
+                          print("==========================================")
+                          print("💓 Zepp HRV / RMSSD Summary")
+                          print("==========================================")
+                          print(f"📊 Sample Count : {len(hrv_values)} points")
+                          print(f"📈 Average RMSSD: {avg_hrv:.1f} ms")
+                          print(f"🔼 Peak RMSSD   : {max_hrv} ms")
+                          print(f"🔽 Lowest RMSSD : {min_hrv} ms")
+                          print("==========================================")
+                      else:
+                          print("No HRV values found in samples.")
+                  else:
+                      print("No sample points found in the latest HRV record.")
+              else:
+                  print("No HRV event records found.")
+          except Exception as e:
+              print(f"HRV parsing failed: {e}")
+          '
