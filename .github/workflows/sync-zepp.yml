@@ -79,9 +79,13 @@ jobs:
               items = raw_rdns.get("items", []) if isinstance(raw_rdns, dict) else []
               if items:
                   val = items[0].get("value", {})
-                  print(f"⚡ Readiness Score: {val.get('rdnsScore', 'N/A')}/100")
-                  print(f"💓 Sleep HRV      : {val.get('sleepHRV', 'N/A')} ms")
-                  print(f"❤️  Sleep RHR      : {val.get('sleepRHR', 'N/A')} bpm")
+                  rdns_score = val.get("rdnsScore", "N/A")
+                  sleep_hrv = val.get("sleepHRV", "N/A")
+                  sleep_rhr = val.get("sleepRHR", "N/A")
+                  
+                  print(f"⚡ Readiness Score: {rdns_score}/100")
+                  print(f"💓 Sleep HRV      : {sleep_hrv} ms")
+                  print(f"❤️  Sleep RHR      : {sleep_rhr} bpm")
           except Exception as e:
               print(f"Readiness parsing error: {e}")
 
@@ -96,8 +100,10 @@ jobs:
                   samples = items[0].get("value", {}).get("samples", [])
                   hrv_vals = [s.get("hrv") for s in samples if "hrv" in s]
                   if hrv_vals:
-                      print(f"📈 Overnight Avg RMSSD : {sum(hrv_vals)/len(hrv_vals):.1f} ms")
-                      print(f"🔼 Overnight Peak RMSSD: {max(hrv_vals)} ms")
+                      avg_hrv = sum(hrv_vals) / len(hrv_vals)
+                      max_hrv = max(hrv_vals)
+                      print(f"📈 Overnight Avg RMSSD : {avg_hrv:.1f} ms")
+                      print(f"🔼 Overnight Peak RMSSD: {max_hrv} ms")
           except Exception as e:
               print(f"HRV RMSSD parsing error: {e}")
 
