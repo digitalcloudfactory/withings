@@ -75,4 +75,8 @@ jobs:
               print(f"Parsing failed: {e}")
           '
           
-          python sync-zepp.py events --help
+          echo "=== TESTING --preset hrv ==="
+          python sync-zepp.py --config zepp-config.json events --preset hrv --days 7 --json
+          
+          echo -e "\n=== TESTING --preset hrv-rmssd ==="
+          python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd --days 7 --json
