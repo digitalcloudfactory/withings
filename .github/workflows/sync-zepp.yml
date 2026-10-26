@@ -79,12 +79,9 @@ jobs:
           import sys, json
           try:
               data = json.load(sys.stdin)
-              print("=== SUMMARY KEYS ===")
-              print(list(data.keys()) if isinstance(data, dict) else type(data))
-              # Print specific potential matches if they exist
-              for key in ["hrv", "recovery", "readiness", "score", "training_load"]:
-                  if key in data:
-                      print(f"{key}:", data[key])
+              hr_7_days = data.get("heart_rate_last_7_days", {})
+              print("=== HEART RATE LAST 7 DAYS ===")
+              print(json.dumps(hr_7_days, indent=2))
           except Exception as e:
-              print(f"Summary check failed: {e}")
+              print(f"Inspection failed: {e}")
           '
