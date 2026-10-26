@@ -50,25 +50,27 @@ new_refresh_token = auth_response["body"]["refresh_token"]
 with open(TOKEN_FILE, "w") as f:
   json.dump({"refresh_token": new_refresh_token}, f, indent=4)
 
-# 3. Fetch Measurements from the Last 2 Days (Ensures we catch today's weigh-in)
-two_days_ago = int((datetime.now(timezone.utc) - timedelta(days=2)).timestamp())
+# 3. Fetch Measurements from the Last 7 Days (Widened to 7 days for testing)
+seven_days_ago = int((datetime.now(timezone.utc) - timedelta(days=7)).timestamp())
 
 meas_response = requests.post(
     "https://wbsapi.withings.net/measure",
     data={
         "action": "getmeas",
         "category": "1",
-        "startdate": two_days_ago,  # Uses a time window instead of limit=1
+        "startdate": seven_days_ago,
         "access_token": access_token,
     },
 ).json()
+
+# 🔍 DEBUG: Print the raw response from Withings so we can see what's inside
+print("Raw Withings Response:", json.dumps(meas_response, indent=2))
 
 # 4. Parse & Find the Absolute Latest Measurement Group via Python
 measuregrps = meas_response.get("body", {}).get("measuregrps", [])
 latest_entry = None
 
 if measuregrps:
-  # Sort groups by timestamp descending (newest first) to guarantee we get the latest
   measuregrps.sort(key=lambda x: x.get("date", 0), reverse=True)
   grp = measuregrps[0]
 
