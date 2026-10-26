@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Full Health Summary Report
+      - name: Fetch, Summarize, and Sync Health Data to Stride
         run: |
           # 1. Fetch band-data for Sleep Breakdown
           python sync-zepp.py --config zepp-config.json band-data --days 2 --json > band_data.json
@@ -34,15 +34,43 @@ jobs:
           # 3. Fetch Detailed HRV RMSSD sample points
           python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd --days 2 --json > hrv_data.json
 
-          # 4. Generate Combined Summary Report
+          # 4. Generate Report and POST to Stride API
           python3 -c '
-          import json, base64, datetime
+          import json, base64, datetime, urllib.request
+
+          STRIDE_TOKEN = "stride_pat_vRgxR3OuyXCsIqIjdO9PgmHILhHyOYLDiP12dqZfqgg"
+          STRIDE_URL = "https://api.stride.is/v1/athletes/me/metrics"
+
+          def post_to_stride(metric_type, value):
+              if value is None or value == "N/A":
+                  return
+              payload = {
+                  "type": metric_type,
+                  "value": float(value),
+                  "source": "ZEPP"
+              }
+              data = json.dumps(payload).encode("utf-8")
+              req = urllib.request.Request(
+                  STRIDE_URL, 
+                  data=data, 
+                  headers={
+                      "Authorization": f"Bearer {STRIDE_TOKEN}",
+                      "Content-Type": "application/json"
+                  }, 
+                  method="POST"
+              )
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      print(f"  [Stride API] Successfully posted {metric_type} = {value} (HTTP {resp.status})")
+              except Exception as err:
+                  print(f"  [Stride API] Failed to post {metric_type}: {err}")
 
           print("==========================================")
           print("📊 ZEPP DAILY HEALTH & RECOVERY REPORT")
           print("==========================================")
 
           # --- SLEEP & BASELINE ---
+          score, rhr, sleep_duration_min = "N/A", "N/A", 0
           try:
               with open("band_data.json") as f:
                   raw_band = json.load(f)
@@ -58,6 +86,7 @@ jobs:
                   light = slp.get("lt", 0)
                   rem = slp.get("dt", 0)
                   awake = slp.get("wk", 0)
+                  rhr = slp.get("rhr", "N/A")
                   total_sleep = deep + light + rem
                   
                   print(f"📅 Date: {dt_str}")
@@ -67,6 +96,11 @@ jobs:
                   print(f"  ├─ REM Sleep  : {rem} mins")
                   print(f"  ├─ Light Sleep: {light} mins")
                   print(f"  └─ Awake Time : {awake} mins")
+                  
+                  if score != "N/A":
+                      post_to_stride("SLEEP_SCORE", score)
+                  if rhr != "N/A":
+                      post_to_stride("RESTING_HEART_RATE", rhr)
           except Exception as e:
               print(f"Sleep parsing error: {e}")
 
@@ -86,6 +120,9 @@ jobs:
                   print(f"⚡ Readiness Score: {rdns_score}/100")
                   print(f"💓 Sleep HRV      : {sleep_hrv} ms")
                   print(f"❤️  Sleep RHR      : {sleep_rhr} bpm")
+                  
+                  if rdns_score != "N/A":
+                      post_to_stride("RECOVERY_SCORE", rdns_score)
           except Exception as e:
               print(f"Readiness parsing error: {e}")
 
@@ -104,6 +141,8 @@ jobs:
                       max_hrv = max(hrv_vals)
                       print(f"📈 Overnight Avg RMSSD : {avg_hrv:.1f} ms")
                       print(f"🔼 Overnight Peak RMSSD: {max_hrv} ms")
+                      
+                      post_to_stride("HRV", round(avg_hrv, 1))
           except Exception as e:
               print(f"HRV RMSSD parsing error: {e}")
 
