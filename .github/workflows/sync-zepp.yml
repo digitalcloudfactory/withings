@@ -23,107 +23,83 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Fetch and Summarize Sleep Data
+      - name: Full Health Summary Report
         run: |
-          python sync-zepp.py --config zepp-config.json band-data --days 2 --json | python3 -c '
-          import sys, json, base64, datetime
+          # 1. Fetch band-data for Sleep Breakdown
+          python sync-zepp.py --config zepp-config.json band-data --days 2 --json > band_data.json
+
+          # 2. Fetch Readiness data
+          python sync-zepp.py --config zepp-config.json events --preset readiness --days 2 --json > readiness_data.json
+
+          # 3. Fetch Detailed HRV RMSSD sample points
+          python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd --days 2 --json > hrv_data.json
+
+          # 4. Generate Combined Summary Report
+          python3 -c '
+          import json, base64, datetime
+
+          print("==========================================")
+          print("📊 ZEPP DAILY HEALTH & RECOVERY REPORT")
+          print("==========================================")
+
+          # --- SLEEP & BASELINE ---
           try:
-              raw = json.load(sys.stdin)
-              items = raw.get("data", []) if isinstance(raw, dict) else raw
+              with open("band_data.json") as f:
+                  raw_band = json.load(f)
+              items = raw_band.get("data", []) if isinstance(raw_band, dict) else raw_band
               if items:
                   latest = items[-1]
-                  dt_str = latest.get("date_time")
+                  dt_str = latest.get("date_time", "N/A")
+                  summary_data = json.loads(base64.b64decode(latest.get("summary")).decode("utf-8")) if latest.get("summary") else {}
+                  slp = summary_data.get("slp", {})
                   
-                  summary_str = latest.get("summary")
-                  if summary_str:
-                      decoded = base64.b64decode(summary_str).decode("utf-8")
-                      summary_data = json.loads(decoded)
-                      slp = summary_data.get("slp", {})
-                      
-                      tz_seconds = int(summary_data.get("tz", 0) or 0)
-                      local_tz = datetime.timezone(datetime.timedelta(seconds=tz_seconds))
-                      
-                      score = slp.get("ss", "N/A")
-                      deep = slp.get("dp", 0)
-                      light = slp.get("lt", 0)
-                      rem = slp.get("dt", 0)      # <-- dt is the official Zepp Dream Time (REM)
-                      awake = slp.get("wk", 0)
-                      
-                      total_sleep = deep + light + rem
-                      
-                      st_ts = slp.get("st")
-                      ed_ts = slp.get("ed")
-                      start_time = datetime.datetime.fromtimestamp(st_ts, local_tz).strftime("%H:%M") if st_ts else "N/A"
-                      end_time = datetime.datetime.fromtimestamp(ed_ts, local_tz).strftime("%H:%M") if ed_ts else "N/A"
-                      
-                      print("==========================================")
-                      print(f"🌙 Zepp Sleep Summary for {dt_str}")
-                      print("==========================================")
-                      print(f"⭐ Sleep Score  : {score}/100")
-                      print(f"⏰ Sleep Times  : {start_time} - {end_time} (UTC+{tz_seconds // 3600})")
-                      print(f"⌛ Total Sleep  : {total_sleep // 60}h {total_sleep % 60}m ({total_sleep} mins)")
-                      print(f"  ├─ Deep Sleep : {deep} mins")
-                      print(f"  ├─ REM Sleep  : {rem} mins")
-                      print(f"  ├─ Light Sleep: {light} mins")
-                      print(f"  └─ Awake Time : {awake} mins")
-                      print("==========================================")
-                  else:
-                      print("No sleep summary block found.")
-              else:
-                  print("No band data records found.")
-          except Exception as e:
-              print(f"Parsing failed: {e}")
-          '
-          
-          python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd --days 2 --json | python3 -c '
-          import sys, json
-          try:
-              data = json.load(sys.stdin)
-              items = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
-              if items:
-                  # Get the most recent record item
-                  latest = items[0]
-                  samples = latest.get("value", {}).get("samples", [])
+                  score = slp.get("ss", "N/A")
+                  deep = slp.get("dp", 0)
+                  light = slp.get("lt", 0)
+                  rem = slp.get("dt", 0)
+                  awake = slp.get("wk", 0)
+                  total_sleep = deep + light + rem
                   
-                  if samples:
-                      # Extract all hrv values from the sample points
-                      hrv_values = [s.get("hrv") for s in samples if "hrv" in s]
-                      
-                      if hrv_values:
-                          avg_hrv = sum(hrv_values) / len(hrv_values)
-                          max_hrv = max(hrv_values)
-                          min_hrv = min(hrv_values)
-                          
-                          print("==========================================")
-                          print("💓 Zepp HRV / RMSSD Summary")
-                          print("==========================================")
-                          print(f"📊 Sample Count : {len(hrv_values)} points")
-                          print(f"📈 Average RMSSD: {avg_hrv:.1f} ms")
-                          print(f"🔼 Peak RMSSD   : {max_hrv} ms")
-                          print(f"🔽 Lowest RMSSD : {min_hrv} ms")
-                          print("==========================================")
-                      else:
-                          print("No HRV values found in samples.")
-                  else:
-                      print("No sample points found in the latest HRV record.")
-              else:
-                  print("No HRV event records found.")
+                  print(f"📅 Date: {dt_str}")
+                  print(f"🌙 Sleep Score  : {score}/100")
+                  print(f"⌛ Total Sleep  : {total_sleep // 60}h {total_sleep % 60}m ({total_sleep} mins)")
+                  print(f"  ├─ Deep Sleep : {deep} mins")
+                  print(f"  ├─ REM Sleep  : {rem} mins")
+                  print(f"  ├─ Light Sleep: {light} mins")
+                  print(f"  └─ Awake Time : {awake} mins")
           except Exception as e:
-              print(f"HRV parsing failed: {e}")
-          '
+              print(f"Sleep parsing error: {e}")
 
-          python sync-zepp.py --config zepp-config.json events --preset readiness --days 2 --json | python3 -c '
-          import sys, json
+          print("------------------------------------------")
+
+          # --- READINESS METRICS ---
           try:
-              data = json.load(sys.stdin)
-              items = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+              with open("readiness_data.json") as f:
+                  raw_rdns = json.load(f)
+              items = raw_rdns.get("items", []) if isinstance(raw_rdns, dict) else []
               if items:
-                  print("=== READINESS ITEM KEYS ===")
-                  print(list(items[0].keys()))
-                  print("\n=== SAMPLE READINESS ITEM ===")
-                  print(json.dumps(items[0], indent=2))
-              else:
-                  print("No readiness event records found.")
+                  val = items[0].get("value", {})
+                  print(f"⚡ Readiness Score: {val.get(\"rdnsScore\", \"N/A\")}/100")
+                  print(f"💓 Sleep HRV      : {val.get(\"sleepHRV\", \"N/A\")} ms")
+                  print(f"❤️  Sleep RHR      : {val.get(\"sleepRHR\", \"N/A\")} bpm")
           except Exception as e:
-              print(f"Readiness check failed: {e}")
+              print(f"Readiness parsing error: {e}")
+
+          print("------------------------------------------")
+
+          # --- RMSSD SAMPLES SUMMARY ---
+          try:
+              with open("hrv_data.json") as f:
+                  raw_hrv = json.load(f)
+              items = raw_hrv.get("items", []) if isinstance(raw_hrv, dict) else []
+              if items:
+                  samples = items[0].get("value", {}).get("samples", [])
+                  hrv_vals = [s.get("hrv") for s in samples if "hrv" in s]
+                  if hrv_vals:
+                      print(f"📈 Overnight Avg RMSSD : {sum(hrv_vals)/len(hrv_vals):.1f} ms")
+                      print(f"🔼 Overnight Peak RMSSD: {max(hrv_vals)} ms")
+          except Exception as e:
+              print(f"HRV RMSSD parsing error: {e}")
+
+          print("==========================================")
           '
