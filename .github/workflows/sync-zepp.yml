@@ -108,10 +108,10 @@ jobs:
                   print(f"  ├─ Light Sleep: {light} mins")
                   print(f"  └─ Awake Time : {awake} mins")
                   
-                  if score != "N/A":
-                      post_to_stride("SLEEP_SCORE", score)
-                  if rhr != "N/A":
-                      post_to_stride("RESTING_HEART_RATE", rhr)
+                 #  if score != "N/A":
+                   #    post_to_stride("SLEEP_SCORE", score)
+                 #  if rhr != "N/A":
+                    #   post_to_stride("RESTING_HEART_RATE", rhr)
           except Exception as e:
               print(f"Sleep parsing error: {e}")
 
