@@ -24,25 +24,17 @@ jobs:
         run: pip install -r requirements.txt
 
 
-      - name: Check Top-Level Body Battery and Readiness Summaries
+      - name: Inspect All Readiness Sub-Scores
         run: |
-          echo "=== BODY-BATTERY TOP LEVEL ==="
-          python sync-zepp.py --config zepp-config.json events --preset body-battery --days 2 --json | python3 -c '
-          import sys, json
-          data = json.load(sys.stdin)
-          items = data.get("items", []) if isinstance(data, dict) else data
-          if items:
-              for i in items:
-                  print({k: v for k, v in i.items() if k != "value"})
-                  print("Value keys:", list(i.get("value", {}).keys()))
-          '
-
-          echo -e "\n=== READINESS TOP LEVEL ==="
           python sync-zepp.py --config zepp-config.json events --preset readiness --days 2 --json | python3 -c '
           import sys, json
           data = json.load(sys.stdin)
           items = data.get("items", []) if isinstance(data, dict) else data
           if items:
-              for i in items:
-                  print(i)
+              for idx, item in enumerate(items):
+                  print(f"--- Readiness Record {idx} ---")
+                  val = item.get("value", {})
+                  for k, v in val.items():
+                      if "Score" in k or "score" in k or v == 84:
+                          print(f"  {k}: {v}")
           '
