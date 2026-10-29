@@ -24,12 +24,12 @@ jobs:
         run: pip install -r requirements.txt
 
 
-      - name: Validate Last 5 Days of Blended Vitality Scores
+      - name: Validate Last 5 Days of Blended Vitality Scores (Filtered)
         run: |
           # 1. Fetch 7 days of Body Battery / Charge data
           python sync-zepp.py --config zepp-config.json events --preset body-battery --days 7 --json > multi_day_hybrid.json
 
-          # 2. Python helper to process and print validation report
+          # 2. Python helper to process, filter sentinels, and print validation report
           python3 -c '
           import json, datetime
 
@@ -42,7 +42,7 @@ jobs:
               items = sorted(items, key=lambda x: x.get("timestamp", 0))[-5:]
               
               print("==========================================")
-              print("📊 5-DAY HISTORICAL VITALITY VALIDATION REPORT")
+              print("📊 5-DAY HISTORICAL VITALITY VALIDATION (FILTERED)")
               print("==========================================")
 
               if not items:
@@ -58,11 +58,20 @@ jobs:
 
                   samples = item.get("value", {}).get("samples", [])
                   if not samples:
-                      print(f"📅 Date: {date_str} | No sample points available.")
+                      print(f"📅 Date       : {date_str} | No sample points available.")
                       continue
 
-                  # Find peak morning sample for that day
-                  peak_sample = max(samples, key=lambda x: x.get("total", 0))
+                  # Filter out invalid/sentinel samples (e.g., total == 255 or missing total)
+                  valid_samples = [s for s in samples if s.get("total") and s.get("total") != 255]
+                  
+                  if not valid_samples:
+                      print(f"📅 Date       : {date_str}")
+                      print(f"  └─ Status   : Skipped (All samples contained sentinel value 255)")
+                      print("-" * 42)
+                      continue
+
+                  # Find peak morning sample from valid data only
+                  peak_sample = max(valid_samples, key=lambda x: x.get("total", 0))
                   physical = peak_sample.get("physical", 0)
                   mental = peak_sample.get("mental", 0)
                   raw_total = peak_sample.get("total", 0)
