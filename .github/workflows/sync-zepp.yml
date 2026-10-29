@@ -83,7 +83,7 @@ jobs:
 
                   # POST to Stride API
                   payload = {
-                      "type": "BODY_BATTERY",
+                      "type": "RECOVERY_SCORE",
                       "value": raw_total,
                       "timestamp": timestamp_iso
                   }
