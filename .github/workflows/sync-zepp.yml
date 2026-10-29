@@ -26,18 +26,8 @@ jobs:
 
       - name: Inspect Daily Health Preset
         run: |
-          python sync-zepp.py --config zepp-config.json events --preset daily-health --days 2 --json | python3 -c '
-          import sys, json
-          try:
-              data = json.load(sys.stdin)
-              items = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
-              if items:
-                  print("=== DAILY HEALTH ITEM KEYS ===")
-                  print(list(items[0].keys()))
-                  print("\n=== SAMPLE DAILY HEALTH ITEM ===")
-                  print(json.dumps(items[0], indent=2))
-              else:
-                  print("No daily-health event records found.")
-          except Exception as e:
-              print(f"Daily health check failed: {e}")
-          '
+          echo "=== STRESS PRESET ==="
+          python sync-zepp.py --config zepp-config.json events --preset stress --days 2 --json | head -n 1
+          
+          echo -e "\n=== EMOTION PRESET ==="
+          python sync-zepp.py --config zepp-config.json events --preset emotion --days 2 --json | head -n 1
