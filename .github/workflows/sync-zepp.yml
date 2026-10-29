@@ -24,17 +24,14 @@ jobs:
         run: pip install -r requirements.txt
 
 
-      - name: Inspect All Readiness Sub-Scores
+      - name: Inspect Full Body Battery Event Structure
         run: |
-          python sync-zepp.py --config zepp-config.json events --preset readiness --days 2 --json | python3 -c '
+          python sync-zepp.py --config zepp-config.json events --preset body-battery --days 2 --json | python3 -c '
           import sys, json
           data = json.load(sys.stdin)
           items = data.get("items", []) if isinstance(data, dict) else data
           if items:
               for idx, item in enumerate(items):
-                  print(f"--- Readiness Record {idx} ---")
-                  val = item.get("value", {})
-                  for k, v in val.items():
-                      if "Score" in k or "score" in k or v == 84:
-                          print(f"  {k}: {v}")
+                  print(f"=== Body Battery Item {idx} ===")
+                  print(json.dumps(item, indent=2))
           '
