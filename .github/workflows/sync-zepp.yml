@@ -28,15 +28,31 @@ jobs:
           python sync-zepp.py --config zepp-config.json events --preset body-battery --days 2 --json > hybrid_data.json
           python3 -c '
           import json
+          
+          # --- HYBRIDCHARGE / BODY BATTERY METRICS (WAKE-UP / MORNING) ---
           try:
               with open("hybrid_data.json") as f:
-                  data = json.load(f)
-              items = data.get("items", []) if isinstance(data, dict) else []
+                  raw_hybrid = json.load(f)
+              items = raw_hybrid.get("items", []) if isinstance(raw_hybrid, dict) else []
               if items:
-                  print("=== HYBRIDCHARGE / BODY BATTERY ITEM ===")
-                  print(json.dumps(items[0], indent=2))
-              else:
-                  print("No hybrid charge records found.")
+                  samples = items[0].get("value", {}).get("samples", [])
+                  if samples:
+                      # Option A: The very first recorded sample of the morning (waking up)
+                      # wakeup_sample = samples[0]
+                      
+                      # Option B: Find the peak/maximum charge reached during the morning block
+                      wakeup_sample = max(samples, key=lambda x: x.get("total", 0))
+                      
+                      hybrid_total = wakeup_sample.get("total", "N/A")
+                      physical = wakeup_sample.get("physical", "N/A")
+                      mental = wakeup_sample.get("mental", "N/A")
+                      offset_mins = wakeup_sample.get("s", 0) // 60
+                      
+                      print(f"⚡ Morning Body Battery : {hybrid_total} (at +{offset_mins} mins)")
+                      print(f"  ├─ Physical Score     : {physical:.1f}")
+                      print(f"  └─ Mental Score       : {mental:.1f}")
+                      
+                      if hybrid_total != "N/A":
+                          post_to_stride("BODY_BATTERY", hybrid_total)
           except Exception as e:
-              print(f"Error: {e}")
-          '
+              print(f"HybridCharge parsing error: {e}")
