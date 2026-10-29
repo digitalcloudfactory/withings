@@ -25,12 +25,12 @@ jobs:
 
       - name: Fetch HybridCharge Data
         run: |
-          python sync-zepp.py events --type Charge --subtype insight_data --days 7
+          python sync-zepp.py --config zepp-config.json events --type Charge --subtype insight_data --days 7
           
           python sync-zepp.py --config zepp-config.json events --preset body-battery --days 2 --json > hybrid_data.json
           
           # Write the python script to a file to avoid inline shell/whitespace errors
-          cat << 'EOF' > parse_hybrid.py
+          cat << 'EOF' > parse_hybrid.py 
           import json, datetime, urllib.request, urllib.error
 
           STRIDE_TOKEN = "stride_pat_vRgxR3OuyXCsIqIjdO9PgmHILhHyOYLDiP12dqZfqgg"
