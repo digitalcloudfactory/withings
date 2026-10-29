@@ -25,7 +25,7 @@ jobs:
 
       - name: Fetch HybridCharge Data
         run: |
-          python3 sync-zepp.py events --type Charge --subtype insight_data --days 7
+          python sync-zepp.py events --type Charge --subtype insight_data --days 7
           
           python sync-zepp.py --config zepp-config.json events --preset body-battery --days 2 --json > hybrid_data.json
           
