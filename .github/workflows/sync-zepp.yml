@@ -24,14 +24,60 @@ jobs:
         run: pip install -r requirements.txt
 
 
-      - name: Inspect Full Body Battery Event Structure
+      - name: Validate Last 5 Days of Blended Vitality Scores
         run: |
-          python sync-zepp.py --config zepp-config.json events --preset body-battery --days 2 --json | python3 -c '
-          import sys, json
-          data = json.load(sys.stdin)
-          items = data.get("items", []) if isinstance(data, dict) else data
-          if items:
-              for idx, item in enumerate(items):
-                  print(f"=== Body Battery Item {idx} ===")
-                  print(json.dumps(item, indent=2))
+          # 1. Fetch 7 days of Body Battery / Charge data
+          python sync-zepp.py --config zepp-config.json events --preset body-battery --days 7 --json > multi_day_hybrid.json
+
+          # 2. Python helper to process and print validation report
+          python3 -c '
+          import json, datetime
+
+          try:
+              with open("multi_day_hybrid.json") as f:
+                  raw_data = json.load(f)
+              items = raw_data.get("items", []) if isinstance(raw_data, dict) else []
+              
+              # Sort items by timestamp ascending and take the last 5 days
+              items = sorted(items, key=lambda x: x.get("timestamp", 0))[-5:]
+              
+              print("==========================================")
+              print("📊 5-DAY HISTORICAL VITALITY VALIDATION REPORT")
+              print("==========================================")
+
+              if not items:
+                  print("No body-battery event records found.")
+
+              for item in items:
+                  ts_ms = item.get("timestamp")
+                  if not ts_ms:
+                      continue
+                  
+                  dt_utc = datetime.datetime.fromtimestamp(ts_ms / 1000.0, datetime.timezone.utc)
+                  date_str = dt_utc.strftime("%Y-%m-%d")
+
+                  samples = item.get("value", {}).get("samples", [])
+                  if not samples:
+                      print(f"📅 Date: {date_str} | No sample points available.")
+                      continue
+
+                  # Find peak morning sample for that day
+                  peak_sample = max(samples, key=lambda x: x.get("total", 0))
+                  physical = peak_sample.get("physical", 0)
+                  mental = peak_sample.get("mental", 0)
+                  raw_total = peak_sample.get("total", 0)
+
+                  # 70% Physical + 30% Mental Blend Formula
+                  blended_score = round((0.7 * physical) + (0.3 * mental))
+
+                  print(f"📅 Date       : {date_str}")
+                  print(f"  ├─ Raw Total  : {raw_total}")
+                  print(f"  ├─ Physical   : {physical:.1f}")
+                  print(f"  ├─ Mental     : {mental:.1f}")
+                  print(f"  └─ **Blended** : **{blended_score}** (Target ~84)")
+                  print("-" * 42)
+
+              print("==========================================")
+          except Exception as e:
+              print(f"Validation script error: {e}")
           '
