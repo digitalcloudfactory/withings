@@ -1,4 +1,4 @@
-name: Zepp Sync Workflow # (Added a top-level name for clarity)
+name: Zepp Sync SVEN # (Added a top-level name for clarity)
 
 on:
   workflow_dispatch:
