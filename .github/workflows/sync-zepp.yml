@@ -42,7 +42,6 @@ jobs:
           python3 -c '
           import json, base64, datetime, urllib.request, urllib.error
 
-          STRIDE_TOKEN = "stride_pat_vRgxR3OuyXCsIqIjdO9PgmHILhHyOYLDiP12dqZfqgg"
           STRIDE_URL = "https://api.stride.is/v1/athletes/me/metrics"
           
           # Standard RFC 3339 UTC Timestamp
