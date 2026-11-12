@@ -26,6 +26,9 @@ jobs:
 
       - name: Fetch, Summarize, and Sync Health Data to Stride
         run: |
+          python3 - << 'EOF'
+          import json, base64, datetime, os, urllib.request, urllib.error
+          
           # 1. Fetch band-data for Sleep Breakdown
           python sync-zepp.py --config zepp-config.json band-data --days 2 --json > band_data.json
 
