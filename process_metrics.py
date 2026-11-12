@@ -1,0 +1,132 @@
+import json
+import base64
+import datetime
+import os
+import urllib.request
+import urllib.error
+
+STRIDE_TOKEN = os.environ.get("STRIDE_TOKEN")
+STRIDE_URL = "https://api.stride.is/v1/athletes/me/metrics"
+
+now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+def post_to_stride(metric_type, value):
+    if value is None or value == "N/A":
+        return
+    
+    val = float(value) if metric_type == "HRV" else int(value)
+
+    payload = {
+        "type": metric_type,
+        "value": val,
+        "timestamp": now_iso
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        STRIDE_URL, 
+        data=data, 
+        headers={
+            "Authorization": f"Bearer {STRIDE_TOKEN}",
+            "Content-Type": "application/json"
+        }, 
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            print(f"  [Stride API] Successfully posted {metric_type} = {val} (HTTP {resp.status})")
+    except urllib.error.HTTPError as err:
+        error_body = err.read().decode("utf-8", errors="ignore")
+        print(f"  [Stride API] Failed to post {metric_type} (HTTP {err.code}): {error_body}")
+    except Exception as err:
+        print(f"  [Stride API] Failed to post {metric_type}: {err}")
+
+print("==========================================")
+print("📊 ZEPP DAILY HEALTH & RECOVERY REPORT")
+print("==========================================")
+
+# --- SLEEP & BASELINE ---
+try:
+    with open("band_data.json") as f:
+        raw_band = json.load(f)
+    items = raw_band.get("data", []) if isinstance(raw_band, dict) else raw_band
+    if items:
+        latest = items[-1]
+        dt_str = latest.get("date_time", "N/A")
+        summary_data = json.loads(base64.b64decode(latest.get("summary")).decode("utf-8")) if latest.get("summary") else {}
+        slp = summary_data.get("slp", {})
+        
+        score = slp.get("ss", "N/A")
+        deep = slp.get("dp", 0)
+        light = slp.get("lt", 0)
+        rem = slp.get("dt", 0)
+        awake = slp.get("wk", 0)
+        rhr = slp.get("rhr", "N/A")
+        total_sleep = deep + light + rem
+        
+        print(f"📅 Date: {dt_str}")
+        print(f"🌙 Sleep Score  : {score}/100")
+        print(f"⌛ Total Sleep  : {total_sleep // 60}h {total_sleep % 60}m ({total_sleep} mins)")
+        print(f"  ├─ Deep Sleep : {deep} mins")
+        print(f"  ├─ REM Sleep  : {rem} mins")
+        print(f"  ├─ Light Sleep: {light} mins")
+        print(f"  └─ Awake Time : {awake} mins")
+except Exception as e:
+    print(f"Sleep parsing error: {e}")
+
+print("------------------------------------------")
+
+# --- READINESS METRICS ---
+try:
+    with open("readiness_data.json") as f:
+        raw_rdns = json.load(f)
+    items = raw_rdns.get("items", []) if isinstance(raw_rdns, dict) else []
+    if items:
+        val = items[0].get("value", {})
+        rdns_score = val.get("rdnsScore", "N/A")
+        sleep_hrv = val.get("sleepHRV", "N/A")
+        sleep_rhr = val.get("sleepRHR", "N/A")
+        
+        print(f"⚡ Readiness Score: {rdns_score}/100")
+        print(f"💓 Sleep HRV      : {sleep_hrv} ms")
+        print(f"❤️  Sleep RHR      : {sleep_rhr} bpm")
+except Exception as e:
+    print(f"Readiness parsing error: {e}")
+
+print("------------------------------------------")
+
+# --- BODY BATTERY ---
+try:
+    with open("hybrid_data.json") as f:
+        raw_hybrid = json.load(f)
+    items = raw_hybrid.get("items", []) if isinstance(raw_hybrid, dict) else []
+    if items:
+        samples = items[0].get("value", {}).get("samples", [])
+        valid_samples = [s for s in samples if s.get("total") and s.get("total") != 255]
+        if valid_samples:
+            peak_sample = max(valid_samples, key=lambda x: x.get("total", 0))
+            raw_total = int(peak_sample.get("total", 0))
+            print(f"🔋 Raw Total Vitality : {raw_total}")
+            post_to_stride("RECOVERY_SCORE", raw_total)
+except Exception as e:
+    print(f"Body Battery parsing error: {e}")
+
+print("------------------------------------------")
+
+# --- RMSSD SAMPLES SUMMARY ---
+try:
+    with open("hrv_data.json") as f:
+        raw_hrv = json.load(f)
+    items = raw_hrv.get("items", []) if isinstance(raw_hrv, dict) else []
+    if items:
+        samples = items[0].get("value", {}).get("samples", [])
+        hrv_vals = [s.get("hrv") for s in samples if "hrv" in s]
+        if hrv_vals:
+            avg_hrv = sum(hrv_vals) / len(hrv_vals)
+            max_hrv = max(hrv_vals)
+            print(f"📈 Overnight Avg RMSSD : {avg_hrv:.1f} ms")
+            print(f"🔼 Overnight Peak RMSSD: {max_hrv} ms")
+            post_to_stride("HRV", round(avg_hrv, 1))
+except Exception as e:
+    print(f"HRV RMSSD parsing error: {e}")
+
+print("==========================================")
