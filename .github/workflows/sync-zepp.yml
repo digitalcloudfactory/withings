@@ -26,9 +26,6 @@ jobs:
 
       - name: Fetch, Summarize, and Sync Health Data to Stride
         run: |
-          python - << 'EOF'
-          import json, base64, datetime, os, urllib.request, urllib.error
-          
           # 1. Fetch band-data for Sleep Breakdown
           python sync-zepp.py --config zepp-config.json band-data --days 2 --json > band_data.json
 
@@ -42,7 +39,7 @@ jobs:
           python sync-zepp.py --config zepp-config.json events --preset hrv-rmssd --days 2 --json > hrv_data.json
 
           # 5. Generate Report and POST to Stride API
-          python3 -c '
+          python -c '
           import json, base64, datetime, urllib.request, urllib.error
 
           STRIDE_TOKEN = os.environ.get("STRIDE_TOKEN")
